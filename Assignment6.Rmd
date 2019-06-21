@@ -1,0 +1,187 @@
+---
+title: "Mini Project 6"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+---
+
+```{r}
+pro_canc <- read.csv(file = "prostate_cancer.csv", header=TRUE, sep=",")
+attach(pro_canc)
+```
+
+When seeing the boxplot below for the dataset, the variance is high. So we are performing log transformation.
+
+```{r}
+boxplot(pro_canc$psa)
+```
+```{r}
+y <- log(pro_canc$psa, base = exp(1))
+boxplot(y)
+```
+
+Lets try to 
+
+```{r}
+plot(pro_canc$cancervol, y)
+fit1 <- lm(y ~ cancervol, data = pro_canc)
+abline(fit1)
+```
+```{r}
+plot(pro_canc$weight, y)
+fit2 <- lm(y ~ weight, data = pro_canc)
+abline(fit2)
+```
+```{r}
+plot(pro_canc$age, y)
+fit3 <- lm(y ~ age, data = pro_canc)
+abline(fit3)
+```
+```{r}
+plot(pro_canc$benpros, y)
+fit4 <- lm(y ~ benpros, data = pro_canc)
+abline(fit4)
+```
+```{r}
+plot(pro_canc$vesinv, y)
+fit5 <- lm(y ~ factor(vesinv), data = pro_canc)
+abline(fit5)
+```
+```{r}
+plot(pro_canc$capspen, y)
+fit6 <- lm(y ~ capspen, data = pro_canc)
+abline(fit6)
+```
+```{r}
+plot(pro_canc$gleason, y)
+fit7 <- lm(y ~ gleason, data = pro_canc)
+abline(fit7)
+```
+```{r}
+cor(y, pro_canc$cancervol)
+cor(y, pro_canc$vesinv)
+cor(y, pro_canc$gleason)
+cor(y, pro_canc$capspen)
+cor(y, pro_canc$age)
+cor(y, pro_canc$benpros)
+cor(y, pro_canc$weight)
+```
+
+From the plots of individual predictors , the predictors are ordered in decreasing order of their significance with their correlation values listed above
+
+Now ANOVA analysis is performed by adding predictors one by one
+```{r}
+fit8 <- lm(y ~ cancervol+ factor(vesinv), data = pro_canc)
+anova(fit1,fit8)
+```
+```{r}
+summary(fit1)
+```
+```{r}
+summary(fit8)
+```
+
+From the aboves summary data of fit 1 and fit 8, we can see that adjusted R-squared for fit8 > fit1. So we keep fit8 for further analysis. Now we continue the ANOVA analysis for next predictor
+```{r}
+fit9 <- lm(y ~ cancervol+ factor(vesinv)+ gleason, data = pro_canc)
+anova(fit8,fit9)
+```
+
+We can see that the p-value is less than 0.05 on adding gleason to model, so gleason is a significant predictor.
+
+```{r}
+summary(fit9)
+```
+
+Also, we can see that Adjusted R-squared for fit9 > fit8, so we can retain fit 9 for further analysis.
+
+```{r}
+fit10 <- lm(y ~ cancervol+ factor(vesinv) + gleason + capspen, data = pro_canc)
+anova(fit9,fit10)
+```
+
+We can see that p-value > 0.05 so capspen is not significant to add in the model. Therefore fit9 is retained for further analysis.
+
+```{r}
+fit11 <- lm(y ~ cancervol+ factor(vesinv)  + gleason + age, data = pro_canc)
+anova(fit9,fit11)
+```
+
+We can see that p-value > 0.05 for age as well. So age is not significant to add in the model. We will keep fit9 and proceed with other predictors.
+
+```{r}
+fit12 <- lm(y ~ cancervol+ factor(vesinv)  + gleason + benpros, data = pro_canc)
+anova(fit9,fit12)
+```
+
+We can see that P- value is less than 0.05 so benpros is significant in the model.
+
+```{r}
+summary(fit12)
+```
+
+But the value of Adjusted R-squared for fit12 > fit9. So we will continue analysis with fit12.
+
+```{r}
+fit13 <- lm(y ~ cancervol+ factor(vesinv)  + gleason + benpros + weight, data = pro_canc)
+anova(fit12,fit13)
+```
+
+We can see that p-value > 0.05 thus weight is not significant to add in the model. 
+From the above analysis we can see that fit12 is the best model.
+
+Now we will verify the above result by comparing fit12=lm(y ~ cancervol+ factor(vesinv)  + gleason + benpros, data = pro_canc) with automatic stepwise model selection procedures 
+based on AIC
+
+```{r}
+fit12.forward <- step(lm(y ~ 1, data = pro_canc),scope = list(upper = ~cancervol + factor(vesinv) + gleason + benpros + weight + age + capspen),direction ="forward")
+```
+
+From above, we can see that y ~ cancervol + gleason + benpros + factor(vesinv) is the best model from AIC feed forward. This confirms the results obtained by the manual computation of best model.
+
+Model assumptions verification:
+
+Residual plot for fit 12 -
+
+```{r}
+plot(fitted(fit12), resid(fit12))
+abline(h=0)
+```
+
+The residual plot shows constant variability.
+
+QQ-Plot for fit12 -
+
+```{r}
+qqnorm(resid(fit12))
+qqline(resid(fit12))
+```
+
+The QQ-Plot verifies the normality assumption.
+
+Prediction of PSA level of patients.
+
+The best model identified is fit12 <- lm(y ~ cancervol+ factor(vesinv)  + gleason + benpros, data = pro_canc)
+
+Here cancervol, gleason and benpros are quantitative variables whereas vesinv is a categorical attribute.
+
+The most frequent category of vesinv is calculated as below.
+
+```{r}
+table(vesinv)
+```
+0 is the most frequent category.
+
+For the other attributes we use mean to calculate predicted value.
+
+```{r}
+summary(fit12)
+```
+
+The prediction using fit12 model is done as below.
+
+```{r}
+exp(-0.65013 + 0.06488*mean(cancervol) + 0.68*0 + 0.33376*mean(gleason) + 0.09136*mean(benpros))
+```
+
